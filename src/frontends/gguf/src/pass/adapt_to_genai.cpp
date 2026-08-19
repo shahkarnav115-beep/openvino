@@ -97,6 +97,19 @@ bool AdaptToGenAI::run_on_model(const std::shared_ptr<ov::Model>& model) {
         return false;
     }
 
+    if (auto n_seq_active = find_param(model, "n_seq_active")) {
+        n_seq_active->output(0).replace(const_i64({1})->output(0));
+    }
+    if (auto seq_active_start = find_param(model, "seq_active_start")) {
+        seq_active_start->output(0).replace(const_i64({0})->output(0));
+    }
+    if (auto seq_active_end = find_param(model, "seq_active_end")) {
+        seq_active_end->output(0).replace(const_i64({1})->output(0));
+    }
+    if (auto attention_size = find_param(model, "attention_size")) {
+        attention_size->output(0).replace(const_i64({0})->output(0));
+    }
+
     // ---- new genai inputs: input_ids / attention_mask / position_ids [b, seq] i64 ----
     auto input_ids = make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{-1, -1});
     name_output(input_ids, "input_ids");
@@ -178,9 +191,13 @@ bool AdaptToGenAI::run_on_model(const std::shared_ptr<ov::Model>& model) {
         false);  // [1, kv_len]
 
     auto allowed = make_shared<ov::op::v1::LessEqual>(k_row, q_pos_col);  // [seq, kv_len] bool
-    auto zero_f = ov::op::v0::Constant::create(ov::element::f32, ov::Shape{}, {0.0f});
-    auto neg_f = ov::op::v0::Constant::create(ov::element::f32, ov::Shape{}, {NEG_INF});
-    auto mask2d = make_shared<ov::op::v1::Select>(allowed, zero_f, neg_f);  // [seq, kv_len] f32
+    auto target_type = self_kq_mask->output(0).get_element_type();
+    if (!target_type.is_real()) {
+        target_type = ov::element::f32;
+    }
+    auto zero_f = ov::op::v0::Constant::create(target_type, ov::Shape{}, {0.0f});
+    auto neg_f = ov::op::v0::Constant::create(target_type, ov::Shape{}, {NEG_INF});
+    auto mask2d = make_shared<ov::op::v1::Select>(allowed, zero_f, neg_f);  // [seq, kv_len]
     auto mask_4d = make_shared<ov::op::v1::Reshape>(
         mask2d,
         make_shared<ov::op::v0::Concat>(ov::OutputVector{const_i64({1, 1}), seq_len, kv_len}, 0),
