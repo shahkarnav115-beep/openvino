@@ -5,7 +5,10 @@
 #include <functional>
 #include <memory>
 #include <numeric>
+<<<<<<< HEAD
 #include <unordered_map>
+=======
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 #include <vector>
 
 #include "node_context.hpp"
@@ -27,9 +30,15 @@ namespace op {
 //
 //   1. Native .gguf builder path: the parser already extracted the weight into OpenVINO tensors
 //      (weight [+ scales [+ zp]]); the node carries them as attributes "gguf.blob.<sub>" plus the
+<<<<<<< HEAD
 //      quant type id "gguf_qtype" (and marker "gguf_weight"). We rebuild the make_weight_node(
 //      base, weights, qtypes) inputs and call that overload -- the exact dequant path the builder
 //      used before, unchanged numerics, and it handles fused-QKV parts / MoE experts uniformly.
+=======
+//      quant type id "gguf_qtype" (and marker "gguf_weight"). We pass the tensors directly to
+//      make_weight_node -- the exact dequant path the builder used before, unchanged numerics,
+//      and it handles fused-QKV parts / MoE experts uniformly.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 //
 //   2. llama.cpp cgraph path: the node carries the raw ggml bytes in "data" plus the ggml type
 //      name "quant_type"; make_weight_node(data, quant_type, shape) re-extracts and builds. This
@@ -40,6 +49,7 @@ namespace op {
 OutputVector translate_weight(const NodeContext& context) {
     // Path 1: pre-extracted tensors from the native builder.
     if (context.get_attribute<bool>("gguf_weight", false)) {
+<<<<<<< HEAD
         const std::string base = "weight";
         std::unordered_map<std::string, ov::Tensor> weights;
         for (const char* sub : {"weight", "scales", "zp"}) {
@@ -56,6 +66,17 @@ OutputVector translate_weight(const NodeContext& context) {
         std::unordered_map<std::string, gguf_tensor_type> qtypes{{base + ".qtype", qtype}};
         auto node = make_weight_node(base, weights, qtypes);
         return rename_outputs_with_suffix({node}, context.get_name());
+=======
+        WeightTensors tensors{
+            context.get_attribute<ov::Tensor>("gguf.blob.weight", ov::Tensor()),
+            context.get_attribute<ov::Tensor>("gguf.blob.scales", ov::Tensor()),
+            context.get_attribute<ov::Tensor>("gguf.blob.zp", ov::Tensor()),
+        };
+        FRONT_END_OP_CONVERSION_CHECK(tensors.weight, "GGML_OP_NONE weight leaf has no 'gguf.blob.weight' attribute");
+        auto qtype = static_cast<GgufTensorType>(context.get_attribute<int>("gguf_qtype"));
+        auto node = make_weight_node(tensors, qtype, context.get_name());
+        return rename_outputs_with_suffix({std::move(node)}, context.get_name());
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     }
 
     // Path 2: raw ggml bytes from a live cgraph decoder.
@@ -79,7 +100,7 @@ OutputVector translate_weight(const NodeContext& context) {
         FRONT_END_OP_CONVERSION_CHECK(data.get_byte_size() == n_expert * m * k_blocks * kBlockBytes,
                                       "MXFP4 MoE packed byte size mismatch");
         auto packed = std::make_shared<ov::op::v0::Constant>(ov::element::u8, packed_shape, data.data());
-        return rename_outputs_with_suffix({packed}, context.get_name());
+        return rename_outputs_with_suffix({std::move(packed)}, context.get_name());
     }
 
     // MoE expert weights are rank > 2 ([1, n_expert, m, k]). The dequant path works on a 2D
@@ -92,11 +113,11 @@ OutputVector translate_weight(const NodeContext& context) {
         std::vector<int64_t> full(shape.begin(), shape.end());
         auto target = ov::op::v0::Constant::create(ov::element::i64, {full.size()}, full);
         auto reshaped = std::make_shared<ov::op::v1::Reshape>(node, target, false);
-        return rename_outputs_with_suffix({reshaped}, context.get_name());
+        return rename_outputs_with_suffix({std::move(reshaped)}, context.get_name());
     }
 
     auto node = make_weight_node(data, quant_type, shape, context.get_name());
-    return rename_outputs_with_suffix({node}, context.get_name());
+    return rename_outputs_with_suffix({std::move(node)}, context.get_name());
 }
 
 }  // namespace op

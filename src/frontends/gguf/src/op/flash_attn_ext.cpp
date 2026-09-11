@@ -73,11 +73,17 @@ OutputVector translate_flash_attn_ext(const NodeContext& context) {
     //   op_case 0   (llama.cpp cgraph decoder): already PERMUTEd to [B, n_head, n_tokens, head_size],
     //               the canonical SDPA layout -- tile K/V on axis 1, feed SDPA directly.
     //   op_case 100 (native .gguf builder): ggml-natural [B, n_tokens, n_head(_kv), head_size] -- tile
+<<<<<<< HEAD
     //               K/V on axis 2 FIRST, then transpose all three. That ordering (concat -> GQA tile ->
     //               single Transpose -> SDPA) is what the CPU plugin's stateful_sdpa_fusion matches
     //               (its multi-query-broadcast pattern sits on the KV-cache concat output, ahead of
     //               exactly one transpose), so the attention fuses into
     //               ScaledDotProductAttentionWithKVCache.
+=======
+    //               K/V on axis 2 first, then transpose all three. That ordering (concat -> GQA tile
+    //               -> single Transpose -> SDPA) is what the CPU plugin's stateful_sdpa_fusion
+    //               matches, so the attention fuses into ScaledDotProductAttentionWithKVCache.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     const int op_case = context.get_op_case();
     FRONT_END_CHECK_IMPLEMENTED(op_case == 0 || op_case == 100, "Unsupported FLASH_ATTN_EXT case");
     const bool ggml_natural = op_case == 100;
@@ -133,10 +139,15 @@ OutputVector translate_flash_attn_ext(const NodeContext& context) {
     ov::Output<ov::Node> sdpa;
     if (kq_soft_cap != 0.0f) {
         // Gemma2 attention soft-cap: tanh(QK^T * scale * (1/cap)) * cap + mask -> softmax -> *V.
+<<<<<<< HEAD
         // OV SDPA v13 has no native softcap parameter, so we decompose the attention manually.
         // Operates in f32 (q already converted to f16 for normal path; here stay f32).
         // q_t / k_t / v_t are already [B, H, L, S] from the transpose above but in f16;
         // convert to f32 for the manual decomposition.
+=======
+        // OV SDPA v13 has no native softcap parameter, so decompose the attention manually in f32
+        // (q_t/k_t/v_t are f16 from the transpose above).
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         using namespace ov::op;
         auto q_f32_t = std::make_shared<v0::Convert>(q_t, element::f32);
         auto k_f32_t = std::make_shared<v0::Convert>(k_t, element::f32);
@@ -172,17 +183,29 @@ OutputVector translate_flash_attn_ext(const NodeContext& context) {
         sdpa = std::make_shared<ov::op::v13::ScaledDotProductAttention>(q_t, k_t, v_t, mask_sliced, scale_node, false);
     } else {
         // gpt-oss attention sinks: a learned per-head logit participates in the softmax
+<<<<<<< HEAD
         // denominator (so the attention weights do not sum to 1) but contributes no value.
         // OpenVINO SDPA has a native 6-input form (q, k, v, mask, scale, sink) that the CPU
         // plugin folds the sink straight into its online-softmax, so we no longer decompose
         // attention by hand. The sink logit is per head: [n_head] -> [1, n_head, 1, 1] to
         // broadcast over [B, n_head, q, 1] (rank must equal the query rank, last dim 1).
+=======
+        // denominator (so the attention weights do not sum to 1) but contributes no value. OV
+        // SDPA's native 6-input form (q, k, v, mask, scale, sink) folds it into the CPU plugin's
+        // online-softmax. The sink logit is per head: [n_head] -> [1, n_head, 1, 1] to broadcast
+        // over [B, n_head, q, 1] (rank must equal the query rank, last dim 1).
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         using namespace ov::op;
         auto sink = context.get_input(4);
         auto sink_f16 = sink.get_element_type() != element::f16
                             ? std::make_shared<v0::Convert>(sink, element::f16)->output(0)
                             : sink;
+<<<<<<< HEAD
         auto sink_shape = v0::Constant::create(element::i64, {4}, std::vector<int64_t>{1, (int64_t)q_shape[2], 1, 1});
+=======
+        auto sink_shape =
+            v0::Constant::create(element::i64, {4}, std::vector<int64_t>{1, (int64_t)q_shape[head_axis], 1, 1});
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         auto sink_r = std::make_shared<v1::Reshape>(sink_f16, sink_shape, false);
         sdpa = std::make_shared<ov::op::v13::ScaledDotProductAttention>(q_t,
                                                                         k_t,
@@ -199,7 +222,11 @@ OutputVector translate_flash_attn_ext(const NodeContext& context) {
     if (kq_soft_cap == 0.0f) {
         res = std::make_shared<ov::op::v0::Convert>(res, ov::element::f32);
     }
+<<<<<<< HEAD
     return rename_outputs_with_suffix({res}, context.get_name());
+=======
+    return rename_outputs_with_suffix({std::move(res)}, context.get_name());
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 }
 
 }  // namespace op

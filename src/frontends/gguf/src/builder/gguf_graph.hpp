@@ -58,6 +58,10 @@ struct GgufGraph {
     std::map<std::string, std::shared_ptr<ov::Node>> model_extra_inputs;
     std::vector<std::string> model_output_names;
 
+    // Recurrent (overwritten, non-appending) states as {input name, output name} pairs; see
+    // GgufDecoder::get_recurrent_states. Empty for every architecture without linear attention.
+    std::vector<std::pair<std::string, std::string>> recurrent_states;
+
     bool has_rope = false;
     RopeConfig rope_config;
 
@@ -65,6 +69,13 @@ struct GgufGraph {
     // (useful when different layers need different n_dims, e.g. gemma4 SWA vs global).
     // TranslateSession::add_rope_sin_cos skips the shared table when this is set.
     bool use_per_op_rope = false;
+
+    // Sliding-window length in tokens, from the GGUF metadata (0 -> not configured: either the
+    // model has no SWA, or its SWA is described only by sinks / a per-layer boolean pattern with
+    // no explicit token count). TranslateSession records this in rt_info (see
+    // pass::gguf_swa_window_key) so AdaptToGenAI can build a correctly windowed self_kq_mask_swa
+    // instead of reusing the full causal mask.
+    int swa_window_size = 0;
 
     // GGUF tokenizer metadata (the `tokenizer.*` keys), keyed by the sub-key after the last
     // dot (e.g. "model", "tokens", "merges", "scores", "token_type", "pre", "bos_token_id",

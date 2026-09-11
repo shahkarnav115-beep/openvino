@@ -28,9 +28,21 @@ namespace gguf {
 //   1. a live GgufDecoder passed in by a direct linker (the llama.cpp ggml-openvino cgraph path);
 //   2. a .gguf file path (the OpenVINO-native path): the frontend parses the container and builds
 //      the transformer graph per-architecture via the native builder (see load_impl Path 2).
+<<<<<<< HEAD
 // It is installed alongside the other frontends so direct linkers -- the llama.cpp backend and
 // OpenVINO GenAI -- can link openvino::frontend::gguf, and it is discoverable via FrontEndManager
 // so core.read_model("model.gguf") selects it by the .gguf extension + GGUF magic (supported_impl).
+=======
+//
+// Discoverability: "gguf" is in manager.cpp's is_hidden_frontend list, so it is not advertised by
+// available_front_ends() and not auto-selected by load_by_model (core.read_model(".gguf") does
+// not resolve to it). It is still reachable explicitly, by direct linkage or by name via
+// load_by_framework("gguf"). supported_impl below stays implemented, so enabling core.read_model
+// later is just dropping the name from that list.
+//
+// Driving the frontend directly needs no follow-up pass: normalization runs inside convert(), and
+// the only step read_model adds, update_v10_model(), fires solely for legacy IR v10.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 struct FrontEnd::Impl {
     std::unordered_map<std::string, CreatorFunction> op_extension_translators;
@@ -157,10 +169,15 @@ InputModel::Ptr FrontEnd::load_impl(const std::vector<ov::Any>& variants) const 
 }  // namespace frontend
 }  // namespace ov
 
+<<<<<<< HEAD
 // Plugin registration. The frontend is installed in the frontend directory and exports these
 // entry points so FrontEndManager can load it and select it for .gguf model files (via
 // supported_impl: .gguf extension + GGUF magic), which is how core.read_model("model.gguf")
 // and OpenVINO GenAI reach it.
+=======
+// Plugin registration. Exports the standard entry points so FrontEndManager can load the library;
+// selection is covered by the discoverability note at the top of this file.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 GGUF_FRONTEND_C_API ov::frontend::FrontEndVersion get_api_version() {
     return OV_FRONTEND_API_VERSION;
 }

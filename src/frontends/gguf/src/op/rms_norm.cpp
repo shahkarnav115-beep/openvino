@@ -1,5 +1,10 @@
 #include "openvino/decompositions/rms_norm.hpp"
 
+<<<<<<< HEAD
+=======
+#include "openvino/decompositions/rms_norm.hpp"
+
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 #include <memory>
 
 #include "node_context.hpp"
@@ -27,7 +32,7 @@ OutputVector translate_rms_norm(const NodeContext& context) {
     ov::pass::NodeRegistry reg;
     auto res = ov::decomposition::rms_norm(reg, input_node, axes, eps);
 
-    return rename_outputs_with_suffix({res}, context.get_name());
+    return rename_outputs_with_suffix({std::move(res)}, context.get_name());
 }
 
 }  // namespace op

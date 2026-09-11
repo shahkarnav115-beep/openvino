@@ -5,7 +5,11 @@
 #
 # The GGUF files are multi-GB and cannot ship in-repo, so this test is OPT-IN: it runs only when
 # GGUF_FINGERPRINT_MODELS points at local models. It converts each model through the frontend
+<<<<<<< HEAD
 # (core.read_model) and asserts the graph fingerprint matches the recorded expectation, catching
+=======
+# (requested by name, since it is not auto-selectable) and asserts the graph fingerprint matches
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 # any unintended change to the produced graph for a supported architecture.
 #
 # GGUF_FINGERPRINT_MODELS format: semicolon-separated entries "name=path=expected_sighash"

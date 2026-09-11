@@ -14,13 +14,19 @@
 //   frontend's built-in lowerings. This is how the EXECUTION MODE is chosen: conversion always
 //   yields a stateless graph (KV caches as Parameter/Result pairs written by a SetRows
 //   placeholder), and a caller that wants an OpenVINO KV cache registers
+<<<<<<< HEAD
 //   ov::frontend::gguf::pass::MakeStateful here, which consumes those SetRows ops before the
+=======
+//   ov::frontend::gguf::pass::GGUFMakeStateful here, which consumes those SetRows ops before the
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 //   default stateless lowering ever sees them.
 
 #include <algorithm>
 #include <set>
 #include <stdexcept>
 
+#include "common_test_utils/node_builders/constant.hpp"
+#include "common_test_utils/ov_test_utils.hpp"
 #include "op_test_utils.hpp"
 #include "openvino/frontend/extension/conversion.hpp"
 #include "openvino/frontend/extension/decoder_transformation.hpp"
@@ -29,10 +35,18 @@
 #include "openvino/op/abs.hpp"
 #include "openvino/op/assign.hpp"
 #include "openvino/op/concat.hpp"
+<<<<<<< HEAD
+=======
+#include "openvino/op/constant.hpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 #include "openvino/op/gather.hpp"
 #include "openvino/op/multiply.hpp"
 #include "openvino/op/negative.hpp"
 #include "openvino/op/read_value.hpp"
+<<<<<<< HEAD
+=======
+#include "openvino/op/result.hpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 #include "openvino/op/scatter_update.hpp"
 
 using namespace ov_gguf_test;
@@ -120,7 +134,11 @@ namespace {
 
 // One GGML_OP_SET_ROWS writing `data` rows at `idx` into the `cache` input -- the shape of a KV
 // cache write, in the layout the native .gguf builder emits: [1, tokens, n_head_kv, head_size],
+<<<<<<< HEAD
 // whose one dynamic axis (1, the token axis) is what MakeStateful infers the append axis from.
+=======
+// whose one dynamic axis (1, the token axis) is what GGUFMakeStateful infers the append axis from.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 SingleOpBuilder kv_cache_write_builder() {
     return SingleOpBuilder()
         .op("GGML_OP_SET_ROWS")
@@ -165,6 +183,7 @@ TEST(GGUFExtensions, NoExtensionYieldsStatelessCache) {
     }
 }
 
+<<<<<<< HEAD
 // Registering MakeStateful as a DecoderTransformationExtension swaps the execution mode: the same
 // conversion now yields an OpenVINO state. The cache Parameter/Result pair is gone, replaced by a
 // Variable with a ReadValue/Concat/Assign, and no ScatterUpdate is emitted -- the extension ran
@@ -172,6 +191,15 @@ TEST(GGUFExtensions, NoExtensionYieldsStatelessCache) {
 TEST(GGUFExtensions, MakeStatefulExtensionYieldsStatefulCache) {
     auto model = kv_cache_write_builder().build_with_extensions(
         {std::make_shared<ov::frontend::DecoderTransformationExtension>(pass::MakeStateful())});
+=======
+// Registering GGUFMakeStateful as a DecoderTransformationExtension swaps the execution mode: the same
+// conversion now yields an OpenVINO state. The cache Parameter/Result pair is gone, replaced by a
+// Variable with a ReadValue/Concat/Assign, and no ScatterUpdate is emitted -- the extension ran
+// ahead of the built-in stateless lowering and consumed the SetRows first.
+TEST(GGUFExtensions, GGUFMakeStatefulExtensionYieldsStatefulCache) {
+    auto model = kv_cache_write_builder().build_with_extensions(
+        {std::make_shared<ov::frontend::DecoderTransformationExtension>(pass::GGUFMakeStateful())});
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
     ASSERT_EQ(model->get_variables().size(), 1);
     EXPECT_EQ(model->get_sinks().size(), 1);
@@ -208,9 +236,15 @@ TEST(GGUFExtensions, MakeStatefulExtensionYieldsStatefulCache) {
 // skip_caches leaves a named cache stateless while other caches are converted. A sliding-window
 // cache needs this: it is evicted from the front, not only appended to, so an append-grown Variable
 // would not reproduce it.
+<<<<<<< HEAD
 TEST(GGUFExtensions, MakeStatefulSkipsNamedCache) {
     auto model = kv_cache_write_builder().build_with_extensions(
         {std::make_shared<ov::frontend::DecoderTransformationExtension>(pass::MakeStateful({"cache"}))});
+=======
+TEST(GGUFExtensions, GGUFMakeStatefulSkipsNamedCache) {
+    auto model = kv_cache_write_builder().build_with_extensions(
+        {std::make_shared<ov::frontend::DecoderTransformationExtension>(pass::GGUFMakeStateful({"cache"}))});
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
     // The only cache was skipped, so the pass made no change and the built-in stateless lowering
     // handled the SetRows -- an identical result to registering no extension at all.
@@ -255,6 +289,45 @@ private:
     std::map<std::string, std::shared_ptr<ov::Node>> m_split_extra;
 };
 
+<<<<<<< HEAD
+=======
+// A decoder that folds a non-Parameter node into get_model_inputs() instead of routing it through
+// get_model_extra_inputs() -- decoder.hpp's contract explicitly still allows this ("A decoder that
+// folds these into get_model_inputs() leaves this empty"), which is what the llama.cpp cgraph
+// decoder currently does for its auxiliary inputs. Regression test for a crash where
+// TranslateSession::translate_graph pushed every get_model_inputs() entry's
+// dynamic_pointer_cast<Parameter> into params unconditionally, so a non-Parameter entry landed as a
+// null Parameter and crashed when the unused-Parameter pruning later dereferenced it.
+class MixedMainInputDecoder : public SingleOpDecoder {
+public:
+    explicit MixedMainInputDecoder(const SingleOpDecoder& base) : SingleOpDecoder(base) {
+        m_mixed_inputs = SingleOpDecoder::get_model_inputs();
+        m_mixed_inputs["const_aux"] = ov::op::v0::Constant::create(ov::element::i32, ov::Shape{1}, {0});
+    }
+
+    const std::map<std::string, std::shared_ptr<ov::Node>>& get_model_inputs() const override {
+        return m_mixed_inputs;
+    }
+
+private:
+    std::map<std::string, std::shared_ptr<ov::Node>> m_mixed_inputs;
+};
+
+}  // namespace
+
+// A decoder need not split every auxiliary input into get_model_extra_inputs(); one that still
+// folds a non-Parameter node into get_model_inputs() (the decoder.hpp contract permits this, and the
+// llama.cpp cgraph decoder currently relies on it) must not crash conversion.
+TEST(GGUFExtensions, GetModelInputsToleratesNonParameterEntries) {
+    auto base = kv_cache_write_builder();
+    FrontEnd fe;
+    auto mixed = std::make_shared<MixedMainInputDecoder>(*std::dynamic_pointer_cast<SingleOpDecoder>(base.decoder()));
+    EXPECT_NO_THROW(fe.convert(fe.load(std::static_pointer_cast<GgufDecoder>(mixed))));
+}
+
+namespace {
+
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 std::set<std::string> input_names(const std::shared_ptr<ov::Model>& model) {
     std::set<std::string> names;
     for (const auto& p : model->get_parameters()) {
@@ -289,10 +362,17 @@ TEST(GGUFExtensions, StatelessIoIsExactlyTheDecoderInputs) {
 
 // And making the model stateful adds exactly one input, beam_idx, on top of that contract -- so the
 // stateful IO is a function of the pass, not of which decoder produced the stateless graph.
+<<<<<<< HEAD
 TEST(GGUFExtensions, MakeStatefulAddsOnlyBeamIdx) {
     auto stateless = input_names(kv_cache_write_builder().build());
     auto stateful = input_names(kv_cache_write_builder().build_with_extensions(
         {std::make_shared<ov::frontend::DecoderTransformationExtension>(pass::MakeStateful())}));
+=======
+TEST(GGUFExtensions, GGUFMakeStatefulAddsOnlyBeamIdx) {
+    auto stateless = input_names(kv_cache_write_builder().build());
+    auto stateful = input_names(kv_cache_write_builder().build_with_extensions(
+        {std::make_shared<ov::frontend::DecoderTransformationExtension>(pass::GGUFMakeStateful())}));
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
     // The cache Parameter became a Variable, and beam_idx appeared.
     stateless.erase("cache");
@@ -317,3 +397,101 @@ TEST(GGUFExtensions, ArbitraryTransformationExtensionRuns) {
 
     EXPECT_EQ(model->get_friendly_name(), "touched_by_extension");
 }
+<<<<<<< HEAD
+=======
+
+// ── GGUFMakeStateful: recurrent (non-appending) state rewrite ───────────────────────────────────
+//
+// qwen35's Gated-DeltaNet layers carry a conv window and a delta matrix per layer: unlike a KV
+// cache these have no token axis and are overwritten wholesale each step, so nothing in the graph
+// marks them the way a SetRows write marks a cache -- the decoder pairs a state's Parameter and
+// Result explicitly via get_recurrent_states(), and TranslateSession records that pairing in
+// rt_info (gguf_recurrent_states_key) before any DecoderTransformationExtension runs (see
+// translate_session.cpp). SingleOpDecoder models exactly one ggml op, which cannot also carry a
+// separate KV-cache SetRows, so these tests build the rt_info directly on a hand-built model and
+// run GGUFMakeStateful as an ov::pass::ModelPass, bypassing FrontEnd::convert entirely.
+namespace {
+
+// A model with one static-shape Parameter/Result recurrent-state pair, optionally alongside a KV
+// cache SetRows write (kv_cache_write_builder's shape) to model a hybrid stack. state_out is an
+// arbitrary op fed by the state Parameter; its friendly name is what
+// make_recurrent_states_stateful matches a Result's producer against (see make_stateful.cpp).
+std::shared_ptr<ov::Model> recurrent_state_model(bool with_kv_cache) {
+    auto state_in = ov::test::utils::make_param(ov::element::f32, ov::Shape{1, 2, 4}, "state_in");
+    auto state_out = std::make_shared<ov::op::v0::Abs>(state_in);
+    state_out->set_friendly_name("state_out");
+    auto state_result = std::make_shared<ov::op::v0::Result>(state_out);
+
+    ov::ParameterVector params{state_in};
+    ov::ResultVector results{state_result};
+
+    if (with_kv_cache) {
+        // Matches translate_set_rows's own invariant: it Converts `data` to the destination's
+        // element type before constructing SetRows, so data and cache always agree here too.
+        auto data = std::make_shared<ov::op::v0::Parameter>(ov::element::f16, ov::PartialShape{1, -1, 2, 4});
+        auto idx = std::make_shared<ov::op::v0::Parameter>(ov::element::i64, ov::PartialShape{1, 1, 1, -1});
+        auto cache = ov::test::utils::make_param(ov::element::f16, ov::PartialShape{1, -1, 2, 4}, "cache");
+        auto set_rows = std::make_shared<SetRows>(data, idx, cache);
+        auto cache_result = std::make_shared<ov::op::v0::Result>(set_rows);
+        params.insert(params.end(), {data, idx, cache});
+        results.push_back(cache_result);
+    }
+
+    auto model = std::make_shared<ov::Model>(results, params);
+    std::vector<std::string> flat{"state_in", "state_out"};
+    model->get_rt_info()[pass::gguf_recurrent_states_key()] = flat;
+    return model;
+}
+
+}  // namespace
+
+// A recurrent-only model (no KV cache at all -- an all-linear-attention stack) still gets its
+// state rewritten: the early "cache_writes.empty()" return in run_on_model must not skip it.
+TEST(GGUFExtensions, GGUFMakeStatefulRewritesRecurrentOnlyState) {
+    auto model = recurrent_state_model(/*with_kv_cache=*/false);
+
+    pass::GGUFMakeStateful pass;
+    EXPECT_TRUE(pass.run_on_model(model));
+
+    ASSERT_EQ(model->get_variables().size(), 1);
+    EXPECT_EQ(model->get_sinks().size(), 1);
+    for (const auto& p : model->get_parameters()) {
+        EXPECT_NE(p->get_friendly_name(), "state_in");
+    }
+    for (const auto& r : model->get_results()) {
+        EXPECT_EQ(r->get_input_node_shared_ptr(0)->get_friendly_name().find("state_out"), std::string::npos);
+    }
+}
+
+// qwen35 is exactly this: a hybrid stack with both a KV cache (full-attention layers) and a
+// recurrent state (Gated-DeltaNet layers). Both must be rewritten by the same pass invocation.
+TEST(GGUFExtensions, GGUFMakeStatefulRewritesHybridKvAndRecurrentState) {
+    auto model = recurrent_state_model(/*with_kv_cache=*/true);
+
+    pass::GGUFMakeStateful pass;
+    EXPECT_TRUE(pass.run_on_model(model));
+
+    ASSERT_EQ(model->get_variables().size(), 2);
+    EXPECT_EQ(model->get_sinks().size(), 2);
+    for (const auto& p : model->get_parameters()) {
+        EXPECT_NE(p->get_friendly_name(), "state_in");
+        EXPECT_NE(p->get_friendly_name(), "cache");
+    }
+}
+
+// Running the pass twice (e.g. a caller that registers it on an already-stateful model, or a
+// re-entrant conversion) must not duplicate the rewrite: the state Parameter is already gone, so
+// the second run's rt_info-guided lookup must find nothing left to rewrite rather than throwing or
+// creating a second Variable for the same state.
+TEST(GGUFExtensions, GGUFMakeStatefulRecurrentRewriteIsIdempotent) {
+    auto model = recurrent_state_model(/*with_kv_cache=*/false);
+
+    pass::GGUFMakeStateful pass;
+    ASSERT_TRUE(pass.run_on_model(model));
+    ASSERT_EQ(model->get_variables().size(), 1);
+
+    EXPECT_FALSE(pass.run_on_model(model));
+    EXPECT_EQ(model->get_variables().size(), 1);
+    EXPECT_EQ(model->get_sinks().size(), 1);
+}
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06

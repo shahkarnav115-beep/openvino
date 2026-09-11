@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 #!/usr/bin/env python3
+=======
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 # Copyright (C) 2018-2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -22,11 +25,30 @@ import hashlib
 import sys
 
 import openvino as ov
+<<<<<<< HEAD
 
 
 def fingerprint(model_path: str) -> dict:
     core = ov.Core()
     m = core.read_model(model_path)
+=======
+from openvino.frontend import FrontEndManager
+
+
+def convert_gguf(model_path: str):
+    """Convert a .gguf through the GGUF frontend.
+
+    The frontend is not auto-selectable (see is_hidden_frontend in
+    src/frontends/common/src/manager.cpp), so core.read_model(".gguf") does not reach it and it
+    has to be requested by name.
+    """
+    fe = FrontEndManager().load_by_framework("gguf")
+    return fe.convert(fe.load(model_path))
+
+
+def fingerprint(model_path: str) -> dict:
+    m = convert_gguf(model_path)
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     sig = []
     for op in m.get_ops():
         shape = str(op.get_output_partial_shape(0)) if op.get_output_size() > 0 else ""

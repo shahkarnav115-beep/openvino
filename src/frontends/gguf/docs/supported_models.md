@@ -47,6 +47,7 @@ that loads but emits garbage (e.g. `hunyuan`) is **not** counted as supported.
 ## Architectures accepted by the native `.gguf` builder
 
 Everything above is about the **llama.cpp cgraph** path. This section covers the *other*
+<<<<<<< HEAD
 decoder — the native `.gguf` builder (`TransformerBuilder` in
 [`src/builder/gguf_builder.cpp`](../src/builder/gguf_builder.cpp)), which is what
 `core.read_model("model.gguf")` and OpenVINO GenAI use. The two paths share all op
@@ -54,6 +55,15 @@ translators but have separate architecture lists.
 
 The builder's accept-list is the union of two sets, both defined at the bottom of
 `gguf_builder.cpp`:
+=======
+decoder — the native `.gguf` builder (`DecoderBuilder` in
+[`src/builder/arch/decoder_builder.cpp`](../src/builder/arch/decoder_builder.cpp)), which is what
+OpenVINO GenAI uses. The two paths share all op
+translators but have separate architecture lists.
+
+The builder's accept-list is the union of two sets, both defined in
+[`src/builder/arch_registry.cpp`](../src/builder/arch_registry.cpp):
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 - **`verified_archs()`** — convert + compile + generation checked against a reference on a
   real checkpoint.
@@ -64,7 +74,11 @@ The builder's accept-list is the union of two sets, both defined at the bottom o
 Anything not in either set is rejected with an explicit `OPENVINO_ASSERT` at load time
 rather than converting into a silently wrong graph.
 
+<<<<<<< HEAD
 ### `verified_archs()` — 13 architectures
+=======
+### `verified_archs()` — 11 architectures
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 | Architecture | Notes |
 |---|---|
@@ -73,6 +87,7 @@ rather than converting into a silently wrong graph.
 | `qwen3` | QK-norm |
 | `phi3` | fused QKV |
 | `minicpm` | NORMAL rope + scalar embedding/residual/logit scales |
+<<<<<<< HEAD
 | `hunyuan-dense` | |
 | `olmoe` | OLMoE 1B-7B (MoE) |
 | `qwen3moe` | Qwen3 MoE; same topology as `olmoe` |
@@ -83,6 +98,16 @@ rather than converting into a silently wrong graph.
 | `gemma4` | SWA, per-layer embeddings, shared KV |
 
 ### `experimental_archs()` — 15 architectures
+=======
+| `hunyuan-dense` | NEOX rope + learned per-head Q/K norm after RoPE |
+| `olmoe` | OLMoE 1B-7B (MoE) |
+| `qwen35` | Qwen3.5/3.6 (and the Ternary-Bonsai backbone): hybrid Gated-DeltaNet + full attention, M-RoPE, interleaved query+gate projection. Greedy / batch 1 only |
+| `gpt-oss` | MoE + attention sinks + SWA + OAI gated activation |
+| `gemma3` | post-norms + final logit soft-cap |
+| `gemma4` | SWA, per-layer embeddings, shared KV |
+
+### `experimental_archs()` — 19 architectures
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 | Architecture | Notes |
 |---|---|
@@ -98,9 +123,19 @@ rather than converting into a silently wrong graph.
 | `bailingmoe2` | BailingMoe V2: MoE + shared expert + QK-norm |
 | `maincoder` | Maincoder-1B: NORMAL rope, QK-norm (auto-detected) |
 | `mistral3` | Ministral-3B: NORMAL rope, dense |
+<<<<<<< HEAD
 | `mellum` | JetBrains Mellum: pure MoE |
 | `deepseek2-ocr` | DeepSeekOCR: dense lead layers + MoE |
 | `jais2` | JAIS-2: dense (biases auto-detected) |
+=======
+| `muse-glimmer` | Muse Glimmer (Meta Onyx): NORMAL rope on SWA layers only (global layers are NoPE), sigmoid attention output gate, QK-norm, pre+post norms, final logit soft-cap |
+| `mellum` | JetBrains Mellum: pure MoE |
+| `deepseek2-ocr` | DeepSeekOCR: dense lead layers + MoE |
+| `jais2` | JAIS-2: dense (biases auto-detected) |
+| `qwen3moe` | Qwen3 MoE; same topology as `olmoe`. Demoted: degenerate output through the builder |
+| `gemma` | Gemma 2B / 7B. Demoted: throws through the builder (see below) |
+| `gemma2` | post-norms + attention soft-cap. Demoted: degenerate output through the builder |
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 RoPE flavor is **not** in these tables because it is a separate switch: archs listed in
 `arch_uses_neox_rope()` use NEOX (rotate-halves), everything else uses NORMAL (rotate
@@ -122,12 +157,21 @@ model/checkpoint that is simply weak on the prompt.
 | `qwen3` | verified | Qwen3-0.6B Q8_0 | generates (reasoning preamble) | same |
 | `phi3` | verified | Phi-3-mini-4k-instruct Q4 | generates | generates |
 | `minicpm` | verified | MiniCPM-2B-dpo Q4_K_M | generates | generates |
+<<<<<<< HEAD
 | `hunyuan-dense` | verified | Hunyuan-0.5B-Instruct Q4_K_M | **degenerate** | generates |
 | `olmoe` | verified | OLMoE-1B-7B-Instruct Q4_K_M | generates | generates |
 | `qwen3moe` | verified | Qwen3-0.9B-A0.6B Q4_K_M | **degenerate** | generates |
 | `gpt-oss` | verified | gpt-oss-20b MXFP4 | generates (harmony format) | same |
 | `gemma` | verified | gemma-2b Q4_K_M | **degenerate** | degenerate too |
 | `gemma2` | verified | gemma-2-2b-it Q4_K_M | **degenerate** | generates |
+=======
+| `hunyuan-dense` | verified | Hunyuan-0.5B-Instruct Q8_0 | matches reference | same |
+| `olmoe` | verified | OLMoE-1B-7B-Instruct Q4_K_M | generates | generates |
+| `qwen3moe` | experimental | Qwen3-0.9B-A0.6B Q4_K_M | **degenerate** | generates |
+| `gpt-oss` | verified | gpt-oss-20b MXFP4 | generates (harmony format) | same |
+| `gemma` | experimental | gemma-2b Q4_K_M | **throws** (SDPA shape mismatch) | degenerate too |
+| `gemma2` | experimental | gemma-2-2b-it Q4_K_M | **degenerate** | generates |
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 | `gemma3` | verified | gemma-3-1b-it Q4_K_M | generates | generates |
 | `gemma4` | verified | gemma-4-E4B-it Q4_K_M | generates | generates |
 | `llama-embed` | experimental | llama-nemotron-embed-1b-v2 Q4_K_M | repeats (embedding model) | degenerate too |
@@ -136,10 +180,20 @@ model/checkpoint that is simply weak on the prompt.
 | `smollm3` | experimental | SmolLM3-3B Q4_K_M | generates (reasoning preamble) | same |
 | `maincoder` | experimental | Maincoder-1B Q4_K_M | generates | generates |
 | `mistral3` | experimental | Ministral-3-3B-Instruct-2512 Q4_K_M | generates | generates |
+<<<<<<< HEAD
 | `deepseek2-ocr` | experimental | deepseek-ocr-2 Q4_K_M | **degenerate** | generates |
 | `ernie4_5-moe` | experimental | ERNIE-4.5-21B-A3B Q4_K_M | **degenerate** (blank) | generates |
 | `bailingmoe2` | experimental | Ling-mini-2.0 Q2_K | generates | generates |
 | `mellum` | experimental | Mellum2-12B-A2.5B-Instruct Q4_K_M | **degenerate** | generates |
+=======
+| `muse-glimmer` | experimental | Muse-Glimmer-30B Q4_0 | generates | generates |
+| `qwen35` | verified | Qwen3.5-0.8B Q8_0 | generates | generates |
+| `qwen35` (Bonsai) | verified | Ternary-Bonsai-27B Q2_g64 | generates | generates |
+| `deepseek2-ocr` | experimental | deepseek-ocr-2 Q4_K_M | generates | generates |
+| `ernie4_5-moe` | experimental | ERNIE-4.5-21B-A3B Q4_K_M | **degenerate** (blank) | generates |
+| `bailingmoe2` | experimental | Ling-mini-2.0 Q2_K | generates | generates |
+| `mellum` | experimental | Mellum2-12B-A2.5B-Instruct Q4_K_M | generates | generates |
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 | `hunyuan-moe` | experimental | — | not tested (no checkpoint) | — |
 | `glm4moe` | experimental | — | not tested (smallest GLM-4.5-Air ≈ 40 GiB) | — |
 | `exaone-moe` | experimental | — | not tested (smallest ≈ 9 GiB, 32B) | — |
@@ -151,6 +205,7 @@ greedy completion is expected of it, not a defect. `gemma` (v1 base) and `plamo3
 instruct) are degenerate on the reference too, so those rows are checkpoint/prompt artifacts
 rather than frontend bugs.
 
+<<<<<<< HEAD
 That leaves **7 architectures that generate correctly under llama.cpp but not through the
 builder** — `hunyuan-dense`, `qwen3moe`, `gemma2`, `exaone4`, `deepseek2-ocr`,
 `ernie4_5-moe` (blank output) and `mellum` — i.e. real conversion defects. Three of them
@@ -341,6 +396,37 @@ frontend, which emits plain `u2` either way. Measured on Q2_K models, peak anony
 
 Decode also improves (bailingmoe2: 12.7 → 27.0 t/s) because the experts are no longer read from
 f32.
+=======
+That leaves **4 architectures that generate correctly under llama.cpp but not through the
+builder** — `qwen3moe`, `gemma2`, `exaone4` and `ernie4_5-moe` (blank output) —
+i.e. real conversion defects, plus `gemma`, which throws instead of converting cleanly.
+`qwen3moe`, `gemma2` and `gemma` were previously misclassified as
+`verified_archs()`; they have been moved to `experimental_archs()` (and now emit the one-time
+`OPENVINO_WARN`) until the underlying defects are fixed and re-verified.
+
+**`qwen35` is greedy / batch-1 only.** The recurrent conv and delta states are a single
+static-shaped block with no batch axis, and `MakeStateful` does not reorder them by `beam_idx` the
+way it reorders a KV cache. Beam search or batch > 1 therefore **fails at inference** with a shape
+mismatch on the conv window's `Concat` — it does not silently mix state across beams, so no wrong
+output can be produced. Prefix caching and PagedAttention are unavailable for the same reason: a
+recurrent state cannot be re-derived from a cached prefix, and cannot be paged. Verified
+token-for-token against llama.cpp on two real checkpoints (Qwen3.5-0.8B Q8_0, Ternary-Bonsai-27B
+Q2_g64), with final-logits agreement within 1.0% / 0.12% of llama.cpp — in line with the noise
+already present on the *verified* `qwen3` arch through the same harness.
+
+A packaging gotcha worth knowing: **`Ternary-Bonsai-27B-Q2_0.gguf` is not upstream `Q2_0`** — it
+does not load in llama.cpp either. It's packed **g128** (one f16 scale per 128 weights) while
+`GGML_TYPE_Q2_0` is **g64** (18 bytes per 64 weights); use `Ternary-Bonsai-27B-Q2_g64.gguf`
+instead. The frontend rejects the mispacked file safely (`data runs past EOF`) rather than
+dequantizing garbage.
+
+`muse-glimmer`'s row was decided by the *tokenizer*, not the graph: the converted graph reproduces
+llama.cpp token-for-token, but GenAI's GGUF tokenizer builder only honored
+`tokenizer.ggml.add_bos_token` on the SentencePiece path, silently dropping the leading BOS on the
+BPE (`gpt2`) path that this (BOS-sensitive) model uses. Same gap affected `llama3`/`mistral3` the
+same way; fixed in `gguf_tokenizer.cpp` by emitting BOS/EOS as a `CombineSegments` segment on every
+tokenizer path.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 ## Adding a new architecture
 

@@ -4,6 +4,15 @@
 
 set(TARGET_NAME ov_gguf_frontend_tests)
 
+if(NOT BUILD_SHARED_LIBS)
+    # This target compiles the frontend's own sources directly (white-box access to internal
+    # helpers) and links openvino::runtime, which in static builds already bundles every
+    # registered frontend via ov_target_link_frontends() -- the duplicate frontend.cpp objects
+    # then conflict at link time. No other frontend's tests compile their own sources this way,
+    # so skip only here rather than changing that shared static-build mechanism.
+    return()
+endif()
+
 # Compile the frontend sources directly into the test binary instead of linking the
 # installed library. Explicit source lists (no GLOB); keep in sync when adding sources.
 set(FE_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../src")
@@ -17,12 +26,29 @@ set(FRONTEND_SRCS
     "${FE_SRC_DIR}/pass/adapt_to_genai.cpp"
     "${FE_SRC_DIR}/pass/lower_set_rows_stateless.cpp"
     "${FE_SRC_DIR}/pass/make_stateful.cpp"
+<<<<<<< HEAD
+=======
+    "${FE_SRC_DIR}/pass/prune_orphaned_parameters.cpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     "${FE_SRC_DIR}/tokenizer_metadata.cpp"
     "${FE_SRC_DIR}/quant/gguf.cpp"
     "${FE_SRC_DIR}/quant/gguf_quants.cpp"
     "${FE_SRC_DIR}/quant/weights.cpp"
     "${FE_SRC_DIR}/builder/gguf_builder.cpp"
     "${FE_SRC_DIR}/builder/gguf_builder_decoder.cpp"
+<<<<<<< HEAD
+=======
+    "${FE_SRC_DIR}/builder/graph_emitter.cpp"
+    "${FE_SRC_DIR}/builder/arch_registry.cpp"
+    "${FE_SRC_DIR}/builder/decoder_config.cpp"
+    "${FE_SRC_DIR}/builder/model_kind.cpp"
+    "${FE_SRC_DIR}/builder/arch/decoder_builder.cpp"
+    "${FE_SRC_DIR}/builder/blocks/attention.cpp"
+    "${FE_SRC_DIR}/builder/blocks/common.cpp"
+    "${FE_SRC_DIR}/builder/blocks/ffn.cpp"
+    "${FE_SRC_DIR}/builder/blocks/gated_delta_net.cpp"
+    "${FE_SRC_DIR}/builder/blocks/qkv_repack.cpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     "${FE_SRC_DIR}/op/add_id.cpp"
     "${FE_SRC_DIR}/op/argsort.cpp"
     "${FE_SRC_DIR}/op/clamp.cpp"
@@ -55,10 +81,12 @@ set(FRONTEND_SRCS
     "${FE_SRC_DIR}/op/softmax.cpp"
     "${FE_SRC_DIR}/op/sqr.cpp"
     "${FE_SRC_DIR}/op/ssm_conv.cpp"
+    "${FE_SRC_DIR}/op/top_k.cpp"
     "${FE_SRC_DIR}/op/tri.cpp"
     "${FE_SRC_DIR}/op/sum_rows.cpp"
     "${FE_SRC_DIR}/op/top_k.cpp"
     "${FE_SRC_DIR}/op/transpose.cpp"
+    "${FE_SRC_DIR}/op/unary_elu.cpp"
     "${FE_SRC_DIR}/op/unary_gelu.cpp"
     "${FE_SRC_DIR}/op/unary_math.cpp"
     "${FE_SRC_DIR}/op/unary_misc.cpp"
@@ -68,6 +96,10 @@ set(FRONTEND_SRCS
 )
 
 set(TEST_SRCS
+<<<<<<< HEAD
+=======
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_adapt_to_genai.cpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     "${CMAKE_CURRENT_SOURCE_DIR}/test_arch_conversion.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_dequant_vs_ggml.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_extensions.cpp"

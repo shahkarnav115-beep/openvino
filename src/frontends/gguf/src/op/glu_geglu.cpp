@@ -47,14 +47,20 @@ OutputVector translate_glu_geglu(const NodeContext& context) {
         std::swap(src0, src1);
     }
 
+<<<<<<< HEAD
     // ggml's GGML_GLU_OP_GEGLU uses the tanh GELU approximation (ggml_gelu ->
     // GGML_UNARY_OP_GELU = 0.5x(1+tanh(sqrt(2/pi) x (1+0.044715 x^2)))), NOT the erf form.
     // OV's Gelu defaults to ERF, which is close but diverges ~1-2% per call and compounds
     // across layers into a wrong argmax on deep models (e.g. gemma3-1b). Match ggml with TANH.
+=======
+    // ggml's GGML_GLU_OP_GEGLU uses the tanh GELU approximation, not OV's default ERF form. The
+    // ERF/tanh difference is small per call but compounds across layers into a wrong argmax on
+    // deep models (e.g. gemma3-1b), so match ggml with TANH.
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     auto gelu = std::make_shared<ov::op::v7::Gelu>(src0, ov::op::GeluApproximationMode::TANH);
     auto res = std::make_shared<ov::op::v1::Multiply>(gelu, src1);
 
-    return rename_outputs_with_suffix({res}, context.get_name());
+    return rename_outputs_with_suffix({std::move(res)}, context.get_name());
 }
 
 }  // namespace op

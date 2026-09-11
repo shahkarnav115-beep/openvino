@@ -6,17 +6,23 @@
 
 #include "openvino/op/add.hpp"
 #include "openvino/op/concat.hpp"
+<<<<<<< HEAD
+=======
+#include "openvino/op/cos.hpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 #include "openvino/op/divide.hpp"
 #include "openvino/op/exp.hpp"
 #include "openvino/op/gather.hpp"
+#include "openvino/op/log.hpp"
 #include "openvino/op/matmul.hpp"
 #include "openvino/op/multiply.hpp"
 #include "openvino/op/negative.hpp"
+#include "openvino/op/relu.hpp"
 #include "openvino/op/sigmoid.hpp"
+#include "openvino/op/sin.hpp"
 #include "openvino/op/softplus.hpp"
 #include "openvino/op/subtract.hpp"
 #include "openvino/op/tanh.hpp"
-
 #include "utils.hpp"
 
 namespace ov {
@@ -36,7 +42,11 @@ std::unordered_map<std::string, CreatorFunction> get_supported_ops() {
         {"GGML_OP_CLAMP", op::translate_clamp},
         {"GGML_OP_CONCAT", op::translate_concat},
         {"GGML_OP_CONT", op::translate_cont},
+<<<<<<< HEAD
         {"GGML_OP_COS", op::translate_cos},
+=======
+        {"GGML_OP_COS", op::translate_1to1_match_1_input<v0::Cos>},
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         {"GGML_OP_CPY", op::translate_cpy},
         {"GGML_OP_CUMSUM", op::translate_cumsum},
         {"GGML_OP_DIAG", op::translate_diag},
@@ -47,6 +57,7 @@ std::unordered_map<std::string, CreatorFunction> get_supported_ops() {
         {"GGML_OP_GET_ROWS", op::translate_get_rows},
         {"GGML_OP_IM2COL", op::translate_im2col},
         {"GGML_OP_L2_NORM", op::translate_l2_norm},
+<<<<<<< HEAD
         {"GGML_OP_LOG", op::translate_log},
         {"GGML_OP_MUL", op::translate_1to1_match_2_inputs<v1::Multiply>},
         {"GGML_OP_MUL_MAT", op::translate_mulmat},
@@ -56,6 +67,12 @@ std::unordered_map<std::string, CreatorFunction> get_supported_ops() {
         // the tensors its parser already extracted ("gguf_weight"). translate_weight accepts either
         // payload and builds the same compressed subgraph. A GGML_OP_NONE leaf with neither marker
         // is a model input, resolved to a Parameter before the walk (see TranslateSession).
+=======
+        {"GGML_OP_LOG", op::translate_1to1_match_1_input<v0::Log>},
+        {"GGML_OP_MUL", op::translate_1to1_match_2_inputs<v1::Multiply>},
+        {"GGML_OP_MUL_MAT", op::translate_mulmat},
+        {"GGML_OP_MUL_MAT_ID", op::translate_mul_mat_id},
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         {"GGML_OP_NONE", op::translate_weight},
         {"GGML_OP_NORM", op::translate_norm},
         {"GGML_OP_PAD", op::translate_pad},
@@ -67,7 +84,11 @@ std::unordered_map<std::string, CreatorFunction> get_supported_ops() {
         {"GGML_OP_SCALE", op::translate_scale},
         {"GGML_OP_SET", op::translate_set},
         {"GGML_OP_SET_ROWS", op::translate_set_rows},
+<<<<<<< HEAD
         {"GGML_OP_SIN", op::translate_sin},
+=======
+        {"GGML_OP_SIN", op::translate_1to1_match_1_input<v0::Sin>},
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         {"GGML_OP_SOFT_MAX", op::translate_soft_max},
         {"GGML_OP_SQR", op::translate_sqr},
         {"GGML_OP_SQRT", op::translate_sqrt},
@@ -83,8 +104,13 @@ std::unordered_map<std::string, CreatorFunction> get_supported_ops() {
         {"GGML_UNARY_OP_GELU", op::translate_unary_gelu},
         {"GGML_UNARY_OP_GELU_QUICK", op::translate_unary_gelu_quick},
         {"GGML_UNARY_OP_NEG", op::translate_1to1_match_1_input<v0::Negative>},
+<<<<<<< HEAD
         {"GGML_UNARY_OP_RELU", op::translate_unary_relu},
         {"GGML_UNARY_OP_SIGMOID", op::translate_unary_sigmoid},
+=======
+        {"GGML_UNARY_OP_RELU", op::translate_1to1_match_1_input<v0::Relu>},
+        {"GGML_UNARY_OP_SIGMOID", op::translate_1to1_match_1_input<v0::Sigmoid>},
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         {"GGML_UNARY_OP_SILU", op::translate_unary_silu},
         {"GGML_UNARY_OP_SOFTPLUS", op::translate_1to1_match_1_input<v4::SoftPlus>},
         {"GGML_UNARY_OP_TANH", op::translate_1to1_match_1_input<v0::Tanh>},

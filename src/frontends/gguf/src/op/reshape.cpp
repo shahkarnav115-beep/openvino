@@ -2,21 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "node_context.hpp"
-#include "op_table.hpp"
-#include "utils.hpp"
+#include "openvino/op/reshape.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
+#include <vector>
+
+#include "node_context.hpp"
+#include "op_table.hpp"
 #include "openvino/core/node.hpp"
 #include "openvino/core/node_output.hpp"
 #include "openvino/frontend/exception.hpp"
 #include "openvino/op/concat.hpp"
 #include "openvino/op/constant.hpp"
+<<<<<<< HEAD
 #include "openvino/op/reshape.hpp"
 #include "openvino/op/transpose.hpp"
 #include <stdexcept>
 #include <vector>
+=======
+#include "openvino/op/transpose.hpp"
+#include "utils.hpp"
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
 
 namespace ov {
 namespace frontend {
@@ -46,6 +54,7 @@ OutputVector translate_reshape(const NodeContext& context) {
     auto output_shape = context.get_output_shape().to_shape();
     std::shared_ptr<ov::Node> new_shape_node;
     if (op_case == 1) {
+<<<<<<< HEAD
         // [B, 1, T, n_head*head_size] -> [B, T, n_head, head_size]: split the last dim into heads and
         // flatten whatever leads it into dim 1. Same shape in both stateful and non-stateful paths;
         // the 3D form was causing RoPE broadcasting to T×T when the trailing dimensions are 1 (MQA,
@@ -56,6 +65,16 @@ OutputVector translate_reshape(const NodeContext& context) {
         // ov::pass::SDPAToPagedAttention moves the token count into dim 0 by rewriting input_ids, and
         // a literal here would discard that and leave PA deriving [1, T*H*S] operands where the
         // plugin wants [T, H*S]. With the 0 the same constant serves both:
+=======
+        // [B, 1, T, n_head*head_size] -> [B, T, n_head, head_size]: split the last dim into heads
+        // and flatten whatever leads it into dim 1. The 3D form was causing RoPE broadcasting to
+        // T×T when the trailing dimensions are 1 (MQA, n_head_kv=1).
+        //
+        // The leading dim is COPIED from the input via special_zero rather than a literal 1, so
+        // the attention block stays layout-polymorphic: ov::pass::SDPAToPagedAttention moves the
+        // token count into dim 0, and a literal here would discard that. With the 0 the same
+        // constant serves both:
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         //   SDPA inference: in [1, 1, T, H*S]  -> [1, T, H, S]
         //   PagedAttention: in [T, 1, 1, H*S]  -> [T, 1, H, S]  (identical buffer, tokens in dim 0)
         new_shape_node = ov::op::v0::Constant::create(
@@ -66,6 +85,7 @@ OutputVector translate_reshape(const NodeContext& context) {
             {std::make_shared<ov::op::v1::Reshape>(context.get_input(0), new_shape_node, /*special_zero=*/true)},
             context.get_name());
     } else if (op_case == 2) {
+<<<<<<< HEAD
         // Merge the heads back after attention. Like op_case 1, the leading dim is copied from the input
         // (special_zero) rather than pinned to output_shape[0], so the token axis stays wherever the
         // active attention backend put it.
@@ -77,6 +97,16 @@ OutputVector translate_reshape(const NodeContext& context) {
         //   in [1, T, H, S] -> [1, 1, T, H*S]
         // The last dim is the static n_head*head_size and the -1 absorbs the remaining axis, so the
         // following MatMul against [n_embd, n_embd] is unaffected.
+=======
+        // Merge the heads back after attention. Like op_case 1, the leading dim is copied
+        // (special_zero) so the token axis stays wherever the active attention backend put it.
+        //
+        // Rank stays 4 because the next op is the residual Add against the layer input, and OV
+        // broadcasts elementwise operands from the right: every activation is rank 4 (ggml's own
+        // convention), so a rank-3 result would right-align and silently form a token x token
+        // outer product once the token count is not on the expected axis.
+        //   in [1, T, H, S] -> [1, 1, T, H*S]
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
         new_shape_node = ov::op::v0::Constant::create(
             ov::element::i64,
             {4},
@@ -122,13 +152,19 @@ OutputVector translate_reshape(const NodeContext& context) {
     } else if (op_case == 7) {
         // General fully-static reshape (no dynamic token axis): reshape straight to the static
         // output shape. Used by qwen3-next's recurrent-state predelta reshape [262144]->[16,128,128].
+<<<<<<< HEAD
         new_shape_node = ov::op::v0::Constant::create(
             ov::element::i64, {output_shape.size()},
             std::vector<int64_t>(output_shape.begin(), output_shape.end()));
 
+=======
+        new_shape_node = ov::op::v0::Constant::create(ov::element::i64,
+                                                      {output_shape.size()},
+                                                      std::vector<int64_t>(output_shape.begin(), output_shape.end()));
+>>>>>>> 891ebb895f6f89baa30a675bce32edf45c800f06
     }
     auto res = std::make_shared<ov::op::v1::Reshape>(context.get_input(0), new_shape_node, false);
-    return rename_outputs_with_suffix({res}, context.get_name());
+    return rename_outputs_with_suffix({std::move(res)}, context.get_name());
 }
 
 }  // namespace op
